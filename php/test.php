@@ -7,10 +7,11 @@ $client = new \Slack\RealTimeClient($loop);
 $client->setToken('xoxp-22665357441-22696295792-57122648562-f4462592c1');
 
 $client->connect()->then(function () use ($client) {
-    echo "Connected!\n";
+    echo "Connected!...";
 
 
-    $client->getChannelByName('games')->then(function(\Slack\Channel $channel) use ($client) {
+    $client->getChannelByName('apittest')->then(function(\Slack\Channel $channel) use ($client) {
+        echo "Channel found \n";
 //        var_dump($channel);
         /*
         $client->apiCall('channels.history', [
@@ -26,10 +27,18 @@ $client->connect()->then(function () use ($client) {
         */
         $client->on('message', function(\Slack\Payload $data) use ($client, $channel) {
             $data = $data->getData();
-            var_dump($data);
+
             if ($data['channel'] !== $channel->getId()) return;
 
-//            var_dump($data['text']);
+            $text = isset($data['subtype']) ? $data['previous_message']['text'] : $data['text'];
+
+            $pattern = '@<(https?|ftp):\/\/[^\s\/$.?#].[^\s]*>@iS';
+            if (preg_match_all($pattern, $text, $output)) {
+                for($i = 0; $i < count($output[0]); $i++)
+                    printf("%s\n", substr($output[0][$i], 1, count($output[0][$i]) - 2));
+
+//                printf("\nUrl encontrada...");
+            }
 //            $client->send('Ja recebi a msg...', $channel);
         });
     }, function($error) { print $error->getMessage(); });
