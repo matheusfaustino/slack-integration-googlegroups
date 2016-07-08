@@ -1,47 +1,38 @@
 <?php
 include './vendor/autoload.php';
 
+$config = include_once 'configuration.php';
+
 $loop = \React\EventLoop\Factory::create();
 
 $client = new \Slack\RealTimeClient($loop);
-$client->setToken('xoxp-22665357441-22696295792-57122648562-f4462592c1');
+$client->setToken($config['token']);
 
-$client->connect()->then(function () use ($client) {
+/* @todo Make things by attachment */
+$client->connect()->then(function () use ($client, $config) {
     echo "Connected!...";
 
+    foreach ($config['channel'] as $_channel) {
+        $client->getChannelByName($_channel)->then(function(\Slack\Channel $channel) use ($client) {
+            echo "Channel {$channel->getName()} found \n";
+            $client->on('message', function(\Slack\Payload $data) use ($client, $channel) {
+                $data = $data->getData();
 
-    $client->getChannelByName('apittest')->then(function(\Slack\Channel $channel) use ($client) {
-        echo "Channel found \n";
-//        var_dump($channel);
-        /*
-        $client->apiCall('channels.history', [
-            'channel' => $channel->getId(),
-            'type' => 'message',
-            'text' => 'testando...',
-            'count' => 10,
-            'ts' => DateTime::createFromFormat('y-m-d', date('y-m-d'))->getTimestamp()
-        ])->then(function(Slack\Payload $obj) {
-//            var_dump('alksjdlaksjdlkjas');
-            var_dump($obj->getData()['messages']);
-        }, function($error) { print $error->getMessage(); });
-        */
-        $client->on('message', function(\Slack\Payload $data) use ($client, $channel) {
-            $data = $data->getData();
+                if ($data['channel'] !== $channel->getId()) return;
 
-            if ($data['channel'] !== $channel->getId()) return;
+                $text = isset($data['subtype']) ? $data['previous_message']['text'] : $data['text'];
 
-            $text = isset($data['subtype']) ? $data['previous_message']['text'] : $data['text'];
-
-            $pattern = '@<(https?|ftp):\/\/[^\s\/$.?#].[^\s]*>@iS';
-            if (preg_match_all($pattern, $text, $output)) {
-                for($i = 0; $i < count($output[0]); $i++)
-                    printf("%s\n", substr($output[0][$i], 1, count($output[0][$i]) - 2));
+                $pattern = '@<(https?|ftp):\/\/[^\s\/$.?#].[^\s]*>@iS';
+                if (preg_match_all($pattern, $text, $output)) {
+                    for($i = 0; $i < count($output[0]); $i++)
+                        printf("%s\n", substr($output[0][$i], 1, count($output[0][$i]) - 2));
 
 //                printf("\nUrl encontrada...");
-            }
+                }
 //            $client->send('Ja recebi a msg...', $channel);
-        });
-    }, function($error) { print $error->getMessage(); });
+            });
+        }, function($error) { print $error->getMessage(); });
+    }
 });
 
 //$client->on('message', function($data) use ($client) {
